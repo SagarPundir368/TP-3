@@ -4,7 +4,7 @@ def render_sidebar():
     with st.sidebar:
         st.markdown("<div class='sidebar-title'>🌍 AI Travel Planner</div>", unsafe_allow_html=True)
         st.markdown("---")
-        thread_id = st.text_input("👤 User ID", value="aarohi_user", help="Your session ID")
+        thread_id = st.text_input("👤 User ID", value="User-Sagar", help="Your session ID")
 
         st.markdown("<div class='sidebar-title'>Powered by</div>", unsafe_allow_html=True)
         for tech in ["🔗 LangGraph", "🧠 Groq · LLaMA 3.3 70B", "🐘 PostgreSQL", "🔍 Tavily Search", "✈️ AviationStack"]:
