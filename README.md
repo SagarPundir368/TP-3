@@ -1,5 +1,5 @@
 # TP-3
-- Startin My term project 3
+- Starting My term project 3
 
 # VERSION:1----- (SIMPLE)
 
