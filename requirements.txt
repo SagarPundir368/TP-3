@@ -1,0 +1,17 @@
+langchain
+langgraph
+langchain-groq
+langchain-huggingface
+langchain-core
+langchain-community
+langchain-tavily
+
+python-dotenv
+tavily-python
+requests
+streamlit
+ipykernel
+
+## POSTGRESQL
+psycopg[binary]
+psycopg_pool

@@ -9,15 +9,12 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 client = MultiServerMCPClient(
     {
-        "weather":{
-            "transport":"stdio",
-            "command":r"E:\TP-3\.venv\Scripts\python.exe",
-            "args":[
-                r"E:\TP-3\mcp\openweather-mcp\weather_mcp_server.py"
-            ],
-            "env": {
-               "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY 
-            }
+        "expense_track":{
+                    "transport":"stdio",
+                    "command": r"E:\TP-3\.venv\Scripts\python.exe",
+                    "args": [
+                        r"E:\TP-3\mcp\expensetracker-mcp\expense_mcp_server.py"
+                    ]
         }
     }
 )
