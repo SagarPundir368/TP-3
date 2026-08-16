@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from datetime import datetime
 from langchain_core.messages import HumanMessage
-from src.graph import get_compiled_app
+from main import get_compiled_app
 
 # Import your modularized files
 from src.frontend.styles import inject_custom_css
@@ -17,39 +17,22 @@ def init_app():
 # Safely call the cached function
 app = init_app()
 
+
 st.set_page_config(
     page_title="AI Travel Booking System",
     page_icon="✈️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # 1. Apply Styles
 inject_custom_css()
 
 # 2. Render Static UI
-active_user, thread_id = render_sidebar()
+thread_id = render_sidebar()
 render_hero()
 render_destinations()
 
-if thread_id:
-    st.write(f"Logged in as **{active_user}** | Active Session Thread: `{thread_id}`")
-    # --- NEW: Load past session data to the UI ---
-    save_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "outputs","travel_plans")
-    expected_filename = os.path.join(save_dir, f"travel_plan_{thread_id}.md")
-    
-    if os.path.exists(expected_filename):
-        st.markdown("<div class='sec-head'><span>🗓️ Previous Session Data</span></div>", unsafe_allow_html=True)
-        with open(expected_filename, "r", encoding="utf-8") as file:
-            past_plan = file.read()
-        st.markdown(f"<div class='final-card'>{past_plan}</div>", unsafe_allow_html=True)
-        st.markdown("---")
-        
-    # Set the config for LangGraph
-    config = {"configurable": {"thread_id": thread_id}}
-else:
-    st.info("👈 Please create or select a user session from the sidebar to start planning your trip.")
-    
+
 # ── Input ─────────────────────────────────────────────────────────────────────
 st.markdown("<div class='input-label'>🗺️ Describe your trip</div>", unsafe_allow_html=True)
 
@@ -69,36 +52,31 @@ user_query = st.text_area(
     label_visibility="collapsed",
 )
 
-generate = st.button("🚀  Plan Trip / Log Expense", width="stretch")
+generate = st.button("🚀  Plan Trip / Log Expense", use_container_width=True)
 
 # ── Agent pipeline ────────────────────────────────────────────────────────────
 AGENT_META = {
     "flight_agent":    ("✈️", "Flight Agent"),
     "hotel_agent":     ("🏨", "Hotel Agent"),
     "itinerary_agent": ("🗓️", "Itinerary Agent"),
-    "expense_agent":   ("💰", "Expense Agent"),
+    "expense_agent":   ("💰", "Expense Agent"), # ADD THIS LINE
     "final_agent":     ("🧠", "Final Agent"),
 }
 
 if generate:
-    if not thread_id:
-        st.error("Please create or select a user session from the sidebar before submitting.")
-    elif not user_query.strip():
-        st.warning("Please describe your trip or expense request first.")
+    if not user_query.strip():
+        st.warning("Please describe your trip first.")
     else:
         config = {"configurable": {"thread_id": thread_id}}
         
-        collected = {
-            "flight_results": "", 
-            "hotel_results": "",
-            "itinerary": "", 
-            "expense_results": "", 
-            "final_response": "", 
-            "llm_calls": 0
-        }
+        # ADD 'expense_results' HERE
+        collected = {"flight_results": "", "hotel_results": "",
+                     "itinerary": "", "expense_results": "", 
+                     "final_response": "", "llm_calls": 0}
 
         st.markdown("---")
-        st.markdown("<div class='sec-head'><span>🤖 Agent Pipeline — Live</span></div>", unsafe_allow_html=True)
+        st.markdown("<div class='sec-head'><span>🤖 Agent Pipeline — Live</span></div>",
+                    unsafe_allow_html=True)
         
         for chunk in app.stream(
             {
@@ -107,7 +85,7 @@ if generate:
                 "flight_results": "",
                 "hotel_results": "",
                 "itinerary": "",
-                "expense_results": "",
+                "expense_results": "", # ADD 'expense_results' HERE
                 "llm_calls": 0,
             },
             config=config,
@@ -130,13 +108,13 @@ if generate:
                     elif node_name == "itinerary_agent":
                         text = state_update.get("itinerary", "")
                         collected["itinerary"] = text
-                        collected["final_response"] = text  # Populates final card for travel plans
                         st.markdown(text or "_No itinerary generated._")
 
                     elif node_name == "expense_agent":
                         text = state_update.get("expense_results", "")
                         collected["expense_results"] = text
-                        collected["final_response"] = text  # Populates final card for expense outputs
+                        # Since expense_agent ends the graph, we can also set it as the final response
+                        collected["final_response"] = text 
                         st.markdown(text or "_No expense data returned._")
 
                     elif node_name == "final_agent":
@@ -152,30 +130,20 @@ if generate:
 
         # Final plan card
         if collected["final_response"]:
-            st.markdown("<div class='sec-head'><span>🧠 Summary & Response</span></div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='final-card'>{collected['final_response']}</div>", unsafe_allow_html=True)
+            st.markdown("<div class='sec-head'><span>🧠 Final Travel Plan</span></div>",
+                        unsafe_allow_html=True)
+            st.markdown(f"<div class='final-card'>{collected['final_response']}</div>",
+                        unsafe_allow_html=True)
+
 
         # Save and Download
         file_content, filename = save_travel_plan(user_query, thread_id, collected)
 
         dl_col, info_col = st.columns([1, 3])
         with dl_col:
-            st.download_button(
-                "⬇️ Download Output", 
-                data=file_content,
-                file_name=filename, 
-                mime="text/markdown",
-                width="stretch"
-            )
+            st.download_button("⬇️ Download Plan", data=file_content,
+                               file_name=filename, mime="text/markdown",
+                               use_container_width=True)
         with info_col:
-            st.markdown(
-                f"<div class='save-bar'>📁 Auto-saved → <code>travel_plans/{filename}</code></div>",
-                unsafe_allow_html=True
-            )
-
-        import time
-        if "Successfully logged" in collected.get("expense_results", ""):
-            # Wait 1.5 seconds so the user can read the success message
-            time.sleep(1.5) 
-            # Force Streamlit to rerun from top-to-bottom to update the sidebar
-            st.rerun()
+            st.markdown(f"<div class='save-bar'>📁 Auto-saved → <code>travel_plans/{filename}</code></div>",
+                        unsafe_allow_html=True)

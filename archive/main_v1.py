@@ -15,7 +15,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, AnyM
 from langchain_groq import ChatGroq
 
 # Local MCP tool imports
-from agents.mcp_client import (
+from src.mcp_client import (
     tavily_mcp_search,
     aviation_mcp_call,
     get_airlines, 
@@ -26,21 +26,17 @@ from agents.mcp_client import (
 )
 
 # Local prompt imports
-from agents.prompts import FLIGHT_AGENT_PROMPT, ITINERARY_PROMPT
+from src.prompts import FLIGHT_AGENT_PROMPT, ITINERARY_PROMPT
 
 # ==========================================
 # 2. CONFIGURATION & SETUP
 # ==========================================
-load_dotenv()
 
-LLM_API_KEY = os.getenv("GROQ_API_KEY")
-DATABASE_URL = os.getenv("DATABASE_URL")
+from config import GROQ_API_KEY, DATABASE_URL,get_llm
+
 
 # Initialize the Groq LLM
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    api_key=LLM_API_KEY
-)
+llm = get_llm()
 
 # ==========================================
 # 3. GRAPH STATE DEFINITION

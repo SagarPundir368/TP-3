@@ -9,23 +9,24 @@ from dotenv import load_dotenv
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_groq import ChatGroq
 
-# Local prompt imports
-from agents.prompts import EXTRACT_DESTINATION
+# Local prompt imports and environment key
+from src.prompts import EXTRACT_DESTINATION
+from config import DATABASE_URL,OPENWEATHER_API_KEY, AVIATIONSTACK_API_KEY, TAVILY_API_KEY, GROQ_API_KEY
 
 # ==========================================
 # 1. CONFIGURATION & ENVIRONMENT SETUP
 # ==========================================
-load_dotenv()
+# load_dotenv()
 
-LLM_API_KEY = os.getenv("GROQ_API_KEY")
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
-AVIATIONSTACK_API_KEY = os.getenv("AVIATIONSTACK_API_KEY")
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+# LLM_API_KEY = os.getenv("GROQ_API_KEY")
+# TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+# AVIATIONSTACK_API_KEY = os.getenv("AVIATIONSTACK_API_KEY")
+# OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 # Initialize the Groq LLM
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
-    api_key=LLM_API_KEY
+    api_key=GROQ_API_KEY
 )
 
 # Initialize the Multi-Server MCP Client
@@ -55,11 +56,18 @@ client = MultiServerMCPClient(
             "transport": "stdio",
             "command": r"E:\TP-3\.venv\Scripts\python.exe",
             "args": [
-                r"E:\TP-3\openweather-mcp\weather_mcp_server.py"
+                r"E:\TP-3\mcp\openweather-mcp\weather_mcp_server.py"
             ],
             "env": {
                 "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY 
             }
+        },
+        "expense_track":{
+            "transport":"stdio",
+            "command": r"E:\TP-3\.venv\Scripts\python.exe",
+            "args": [
+                r"E:\TP-3\mcp\expensetracker-mcp\expense_mcp_server.py"
+            ]
         }
     }
 )
@@ -96,19 +104,19 @@ async def get_mcp_tool(tool_name: str):
     return _mcp_tools_cache.get(tool_name)
 
 
-# ==========================================
-# 3. LLM HELPER FUNCTIONS
-# ==========================================
-def extract_destination(query: str) -> str:
-    """
-    Uses the Groq LLM to extract only the destination city or country 
-    from a natural language user query.
-    """
-    prompt = EXTRACT_DESTINATION.format(
-        query=query
-    )
-    response = llm.invoke(prompt)
-    return response.content.strip()
+# # ==========================================
+# # 3. LLM HELPER FUNCTIONS
+# # ==========================================
+# def extract_destination(query: str) -> str:
+#     """
+#     Uses the Groq LLM to extract only the destination city or country 
+#     from a natural language user query.
+#     """
+#     prompt = EXTRACT_DESTINATION.format(
+#         query=query
+#     )
+#     response = llm.invoke(prompt)
+#     return response.content.strip()
 
 
 # ==========================================
@@ -191,7 +199,56 @@ async def forecast_mcp_search(city: str):
 
 
 # ==========================================
-# 7. MAIN EXECUTION
+# 7. DOMAIN: EXPENSE TRACKER
+# ==========================================
+async def expense_mcp_add(date: str, amount: float, category: str, subcategory: str, note: str = ""):
+    """
+    Calls the expense MCP server to log a new expense into the SQLite database.
+    """
+    tool = await get_mcp_tool("add_expense")
+    if not tool:
+        return "Expense tracking tool unavailable."
+        
+    return await tool.ainvoke({
+        "date": date,
+        "amount": amount,
+        "category": category,
+        "subcategory": subcategory,
+        "note": note
+    })
+
+async def expense_mcp_list(start_date: str, end_date: str, category: str = ""):
+    """
+    Retrieves a list of expenses from the SQLite database via the MCP server.
+    """
+    tool = await get_mcp_tool("list_expenses")
+    if not tool:
+        return "Expense list tool unavailable."
+        
+    return await tool.ainvoke({
+        "start_date": start_date,
+        "end_date": end_date,
+        "category": category
+    })
+
+async def expense_mcp_summarize(start_date: str, end_date: str, category: str = ""):
+    """
+    Retrieves aggregated expense totals from the SQLite database via the MCP server.
+    """
+    tool = await get_mcp_tool("summarize")
+    if not tool:
+        return "Expense summarize tool unavailable."
+        
+    # We pass an empty string instead of None to match your fastmcp typing
+    return await tool.ainvoke({
+        "start_date": start_date,
+        "end_date": end_date,
+        "category": category
+    })
+
+
+# ==========================================
+# 8. MAIN EXECUTION
 # ==========================================
 async def main():
     """

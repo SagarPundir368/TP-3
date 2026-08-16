@@ -11,8 +11,8 @@ from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 load_dotenv()
 
-from tools.tavily_tool import tavily_search
-from tools.flight_tool import search_flights
+from src.tools.tavily_tool import tavily_search
+from src.tools.flight_tool import search_flights
 
 LLM_API_KEY = os.getenv("GROQ_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
